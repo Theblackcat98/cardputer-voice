@@ -1,0 +1,23 @@
+# PlatformIO
+.pio/
+.pioenvs/
+.piolibdeps/
+.vscode/
+
+# Local secrets (copy firmware/src/config.h.example -> firmware/src/config.h)
+firmware/src/config.h
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+server/audio_tmp/
+
+# Audio captures
+*.wav
+*.mp3
+
+# OS
+.DS_Store
+Thumbs.db

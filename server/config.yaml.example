@@ -1,0 +1,23 @@
+# Copy to config.yaml and edit. Lives next to the server; not committed.
+server:
+  host: "0.0.0.0"
+  port: 8000
+  audio_ttl_minutes: 10   # synthesized replies older than this are deleted
+
+whisper:
+  model: "small"          # tiny | base | small | medium — short utterances are fine on CPU
+  device: "cpu"           # "cuda" only if you have a CUDA-enabled ctranslate2 build
+  compute_type: "int8"    # int8 is the fast CPU default
+
+llamacpp:
+  base_url: "http://127.0.0.1:8080"
+  model: "qwen3.6-27b"    # informational only; the server uses whatever llama.cpp serves
+  system_prompt: "You are a concise voice assistant. Keep replies under 60 words. Plain sentences only, no markdown, no lists."
+  max_tokens: 200
+  temperature: 0.7
+
+tts:
+  # Download a voice from https://github.com/rhasspy/piper/releases
+  # (both the .onnx and its .onnx.json), e.g. en_US-lessac-medium.
+  voice: "voices/en_US-lessac-medium.onnx"
+  # voice_config: "voices/en_US-lessac-medium.onnx.json"  # defaults to <voice>.json

@@ -1,0 +1,17 @@
+// Copy this file to config.h and fill in your values.
+// config.h is gitignored — never commit real credentials.
+#pragma once
+
+#define WIFI_SSID "your-wifi-ssid"
+#define WIFI_PASSWORD "your-wifi-password"
+
+// Companion server address (your PC on the LAN)
+#define SERVER_HOST "192.168.1.50"
+#define SERVER_PORT 8000
+
+// Voice capture limits
+#define SAMPLE_RATE_HZ 16000
+#define RECORD_MAX_SECS 12
+
+// Status screen refresh interval
+#define STATUS_POLL_MS 5000
