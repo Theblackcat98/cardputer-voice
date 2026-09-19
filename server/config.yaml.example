@@ -1,4 +1,13 @@
 # Copy to config.yaml and edit. Lives next to the server; not committed.
+
+# Mock mode: canned STT/LLM + beep TTS. Runs without whisper, llama.cpp or
+# piper — use it to test the Cardputer + API end-to-end before installing models.
+# Can also be a dict to override the canned responses:
+#   mock:
+#     transcript: "what is the gpu temperature"
+#     reply: "Fifty four degrees celsius."
+mock: false
+
 server:
   host: "0.0.0.0"
   port: 8000

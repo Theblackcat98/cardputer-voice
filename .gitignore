@@ -6,6 +6,7 @@
 
 # Local secrets (copy firmware/src/config.h.example -> firmware/src/config.h)
 firmware/src/config.h
+server/config.yaml
 
 # Python
 __pycache__/
@@ -13,6 +14,7 @@ __pycache__/
 *.pyo
 .venv/
 server/audio_tmp/
+*.egg-info/
 
 # Audio captures
 *.wav

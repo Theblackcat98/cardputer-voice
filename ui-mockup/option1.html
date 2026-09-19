@@ -1,0 +1,812 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>M5Stack Cardputer Voice Assistant Mockup</title>
+<style>
+  :root {
+    --bg-dark: #0f1115;
+    --bezel-bg: #1c1e24;
+    --bezel-border: #2c2f38;
+    --cardputer-accent: #ff7700;
+    --cyan: #00f0ff;
+    --cyan-dim: #005566;
+    --white: #f0f4f8;
+    --gray: #6b7785;
+    --green: #00e676;
+    --red: #ff334b;
+    --amber: #ffd600;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background-color: var(--bg-dark);
+    color: var(--white);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, monospace;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 24px 16px;
+  }
+
+  .device-chassis {
+    background: var(--bezel-bg);
+    border: 3px solid var(--bezel-border);
+    border-radius: 12px;
+    padding: 24px 28px 20px 28px;
+    box-shadow: 0 20px 50px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.08);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .chassis-header {
+    width: 100%;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    color: var(--gray);
+    text-transform: uppercase;
+  }
+
+  .chassis-header .badge {
+    color: var(--cardputer-accent);
+  }
+
+  /* Physical Screen Container: strictly 720x405 (3x 240x135) */
+  .screen-frame {
+    width: 720px;
+    height: 405px;
+    background: #000;
+    border: 2px solid #0a0b0e;
+    box-shadow: inset 0 0 12px rgba(0, 240, 255, 0.05);
+    border-radius: 4px;
+    overflow: hidden;
+  }
+
+  canvas#cardputerDisplay {
+    width: 720px;
+    height: 405px;
+    image-rendering: pixelated;
+    image-rendering: crisp-edges;
+    display: block;
+  }
+
+  /* Control Panel */
+  .control-dock {
+    margin-top: 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    width: 720px;
+  }
+
+  .control-group {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: rgba(255,255,255,0.02);
+    padding: 10px 14px;
+    border-radius: 8px;
+    border: 1px solid rgba(255,255,255,0.05);
+  }
+
+  .control-group label {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--gray);
+    min-width: 90px;
+  }
+
+  .btn-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  button {
+    background: #252830;
+    color: var(--white);
+    border: 1px solid #363b47;
+    padding: 6px 12px;
+    font-size: 12px;
+    font-family: inherit;
+    font-weight: 600;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+  }
+
+  button:hover {
+    background: #313540;
+    border-color: var(--cyan);
+    color: var(--cyan);
+  }
+
+  button.active {
+    background: var(--cyan-dim);
+    border-color: var(--cyan);
+    color: var(--cyan);
+  }
+
+  .keyboard-hints {
+    font-size: 11px;
+    color: var(--gray);
+    margin-top: 4px;
+    text-align: center;
+  }
+
+  .keyboard-hints kbd {
+    background: #222630;
+    color: #cbd5e1;
+    padding: 2px 6px;
+    border-radius: 3px;
+    border: 1px solid #3b4252;
+    font-family: monospace;
+  }
+</style>
+</head>
+<body>
+
+<div class="device-chassis">
+  <div class="chassis-header">
+    <span>M5Stack <span class="badge">Cardputer</span></span>
+    <span>ST7789V2 240×135 TFT</span>
+  </div>
+
+  <div class="screen-frame">
+    <!-- True 240x135 logical canvas scaled up via CSS -->
+    <canvas id="cardputerDisplay" width="240" height="135"></canvas>
+  </div>
+</div>
+
+<div class="control-dock">
+  <div class="control-group">
+    <label>State (1-5):</label>
+    <div class="btn-row">
+      <button class="active" onclick="setState('idle')">1. Idle</button>
+      <button onclick="setState('listening')">2. Listening</button>
+      <button onclick="setState('thinking')">3. Thinking</button>
+      <button onclick="setState('speaking')">4. Speaking</button>
+      <button onclick="setState('error')">5. Error</button>
+    </div>
+  </div>
+
+  <div class="control-group">
+    <label>Avatar (M):</label>
+    <div class="btn-row">
+      <button class="active" onclick="setStyle('robot')">UNIT-01 (Robot)</button>
+      <button onclick="setStyle('blob')">GEL (Blob)</button>
+      <button onclick="setStyle('matrix')">8-BIT (Matrix)</button>
+    </div>
+  </div>
+
+  <div class="keyboard-hints">
+    Keys: <kbd>SPACE</kbd> Hold/Toggle Listen &nbsp;|&nbsp; <kbd>1</kbd>-<kbd>5</kbd> States &nbsp;|&nbsp; <kbd>M</kbd> Style &nbsp;|&nbsp; <kbd>Q</kbd> Idle Reset
+  </div>
+</div>
+
+<script>
+/**
+ * -------------------------------------------------------------------------
+ * M5GFX Hardware-Compatible Drawing Layer
+ * -------------------------------------------------------------------------
+ * These methods map directly to M5Cardputer.Display primitives:
+ * - fillRect, drawRect, fillRoundRect, drawRoundRect
+ * - fillCircle, drawCircle, drawLine, drawPixel
+ */
+const canvas = document.getElementById("cardputerDisplay");
+const ctx = canvas.getContext("2d");
+
+// Integer snap to guarantee zero subpixel smoothing on 240x135
+const GFX = {
+  fillRect(x, y, w, h, color) {
+    ctx.fillStyle = color;
+    ctx.fillRect(Math.floor(x), Math.floor(y), Math.floor(w), Math.floor(h));
+  },
+  drawRect(x, y, w, h, color) {
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 1;
+    ctx.strokeRect(Math.floor(x) + 0.5, Math.floor(y) + 0.5, Math.floor(w) - 1, Math.floor(h) - 1);
+  },
+  fillRoundRect(x, y, w, h, r, color) {
+    ctx.fillStyle = color;
+    ctx.beginPath();
+    ctx.roundRect(Math.floor(x), Math.floor(y), Math.floor(w), Math.floor(h), r);
+    ctx.fill();
+  },
+  drawRoundRect(x, y, w, h, r, color) {
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.roundRect(Math.floor(x) + 0.5, Math.floor(y) + 0.5, Math.floor(w) - 1, Math.floor(h) - 1, r);
+    ctx.stroke();
+  },
+  fillCircle(cx, cy, r, color) {
+    ctx.fillStyle = color;
+    ctx.beginPath();
+    ctx.arc(Math.floor(cx), Math.floor(cy), Math.floor(r), 0, Math.PI * 2);
+    ctx.fill();
+  },
+  drawCircle(cx, cy, r, color) {
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.arc(Math.floor(cx) + 0.5, Math.floor(cy) + 0.5, Math.floor(r), 0, Math.PI * 2);
+    ctx.stroke();
+  },
+  drawLine(x0, y0, x1, y1, color) {
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(Math.floor(x0) + 0.5, Math.floor(y0) + 0.5);
+    ctx.lineTo(Math.floor(x1) + 0.5, Math.floor(y1) + 0.5);
+    ctx.stroke();
+  },
+  drawPixel(x, y, color) {
+    ctx.fillStyle = color;
+    ctx.fillRect(Math.floor(x), Math.floor(y), 1, 1);
+  },
+  // Simple fixed-width 5x7 bitmap-like font emulation
+  drawText(text, x, y, color, font = "8px monospace") {
+    ctx.fillStyle = color;
+    ctx.font = font;
+    ctx.textBaseline = "top";
+    ctx.fillText(text, Math.floor(x), Math.floor(y));
+  }
+};
+
+/**
+ * -------------------------------------------------------------------------
+ * Application State & Data
+ * -------------------------------------------------------------------------
+ */
+const AppState = {
+  state: "idle",       // idle | listening | thinking | speaking | error
+  avatarStyle: "robot", // robot | blob | matrix
+  time: 0,
+  speechProgress: 0,
+  transcript: {
+    user: "What's the weather today?",
+    reply: "Partly cloudy, 21°C with 60% humidity in Tokyo."
+  }
+};
+
+const PALETTE = {
+  bg: "#08090C",
+  panelBg: "#0E1117",
+  panelBorder: "#1C2430",
+  cyan: "#00F0FF",
+  cyanDark: "#003A47",
+  white: "#FFFFFF",
+  grayText: "#6F8094",
+  green: "#00FF7F",
+  red: "#FF334B",
+  amber: "#FFD600"
+};
+
+/**
+ * -------------------------------------------------------------------------
+ * Avatar Renderers (Designed for portability to M5GFX)
+ * -------------------------------------------------------------------------
+ */
+const Avatars = {
+  /**
+   * 1. UNIT-01: Geometric Cyber Bot
+   */
+  robot(cx, cy, state, t) {
+    const bob = (state === "idle" || state === "thinking") ? Math.sin(t * 3) * 1.5 : 0;
+    const baseY = cy + bob;
+
+    // Antenna
+    const antColor = state === "listening" ? (Math.sin(t * 15) > 0 ? PALETTE.green : PALETTE.cyan)
+                   : state === "error" ? PALETTE.red
+                   : state === "thinking" ? PALETTE.amber : PALETTE.cyan;
+    GFX.drawLine(cx, baseY - 16, cx, baseY - 24, PALETTE.panelBorder);
+    GFX.fillCircle(cx, baseY - 24, 2, antColor);
+
+    // Ears / side lugs
+    GFX.fillRect(cx - 24, baseY - 4, 3, 8, PALETTE.cyanDark);
+    GFX.fillRect(cx + 21, baseY - 4, 3, 8, PALETTE.cyanDark);
+
+    // Head outer frame
+    GFX.fillRoundRect(cx - 20, baseY - 15, 40, 31, 4, "#141B24");
+    GFX.drawRoundRect(cx - 20, baseY - 15, 40, 31, 4, PALETTE.panelBorder);
+
+    // Inner display visor
+    const visorBg = state === "error" ? "#2B0B11" : "#060A10";
+    GFX.fillRect(cx - 16, baseY - 11, 32, 22, visorBg);
+
+    // Eye Expressions
+    const eyeColor = state === "error" ? PALETTE.red
+                   : state === "listening" ? PALETTE.green
+                   : state === "thinking" ? PALETTE.amber : PALETTE.cyan;
+
+    const eyeY = baseY - 4;
+    const isBlinking = (state === "idle") && (Math.sin(t * 1.8) > 0.94);
+
+    if (state === "error") {
+      // Slanted "X" / hurt eyes
+      GFX.drawLine(cx - 12, eyeY - 3, cx - 6, eyeY + 3, eyeColor);
+      GFX.drawLine(cx - 6, eyeY - 3, cx - 12, eyeY + 3, eyeColor);
+      GFX.drawLine(cx + 6, eyeY - 3, cx + 12, eyeY + 3, eyeColor);
+      GFX.drawLine(cx + 12, eyeY - 3, cx + 6, eyeY + 3, eyeColor);
+    } else if (isBlinking) {
+      // Closed eye lines
+      GFX.drawLine(cx - 12, eyeY, cx - 6, eyeY, eyeColor);
+      GFX.drawLine(cx + 6, eyeY, cx + 12, eyeY, eyeColor);
+    } else if (state === "thinking") {
+      // Darting pupils
+      const glance = Math.sin(t * 6) * 3;
+      GFX.fillRect(cx - 11 + glance, eyeY - 3, 4, 6, eyeColor);
+      GFX.fillRect(cx + 7 + glance, eyeY - 3, 4, 6, eyeColor);
+    } else if (state === "listening") {
+      // Wide attentive pill eyes
+      GFX.fillRoundRect(cx - 13, eyeY - 5, 7, 10, 2, eyeColor);
+      GFX.fillRoundRect(cx + 6, eyeY - 5, 7, 10, 2, eyeColor);
+    } else {
+      // Normal idle eyes
+      GFX.fillRoundRect(cx - 12, eyeY - 3, 6, 7, 1, eyeColor);
+      GFX.fillRoundRect(cx + 6, eyeY - 3, 6, 7, 1, eyeColor);
+    }
+
+    // Mouth / Equalizer Bar (Bottom of Visor)
+    const mouthY = baseY + 6;
+    if (state === "speaking") {
+      // 4 oscillating voice equalizer bars
+      const h1 = 2 + Math.abs(Math.sin(t * 12)) * 5;
+      const h2 = 2 + Math.abs(Math.cos(t * 14)) * 6;
+      const h3 = 2 + Math.abs(Math.sin(t * 10)) * 5;
+      const h4 = 2 + Math.abs(Math.cos(t * 16)) * 4;
+      GFX.fillRect(cx - 8, mouthY - h1/2, 2, h1, PALETTE.cyan);
+      GFX.fillRect(cx - 4, mouthY - h2/2, 2, h2, PALETTE.cyan);
+      GFX.fillRect(cx + 2, mouthY - h3/2, 2, h3, PALETTE.cyan);
+      GFX.fillRect(cx + 6, mouthY - h4/2, 2, h4, PALETTE.cyan);
+    } else if (state === "error") {
+      GFX.drawLine(cx - 7, mouthY + 1, cx + 7, mouthY - 1, PALETTE.red);
+    } else if (state === "listening") {
+      GFX.drawLine(cx - 5, mouthY, cx + 5, mouthY, PALETTE.green);
+    } else {
+      GFX.fillRect(cx - 4, mouthY, 8, 1, PALETTE.cyanDark);
+    }
+  },
+
+  /**
+   * 2. GEL: Organic Blob Creature
+   */
+  blob(cx, cy, state, t) {
+    // Breathing squash & stretch
+    const squash = (state === "listening") ? Math.sin(t * 8) * 2 : Math.sin(t * 3) * 1.5;
+    const bodyW = 34 + squash;
+    const bodyH = 28 - squash;
+    const baseY = cy + 2 + (squash / 2);
+
+    const mainColor = state === "error" ? PALETTE.red
+                    : state === "listening" ? PALETTE.green
+                    : state === "thinking" ? PALETTE.amber : PALETTE.cyan;
+
+    // Body
+    GFX.fillRoundRect(cx - bodyW / 2, baseY - bodyH / 2, bodyW, bodyH, 12, "#12202A");
+    GFX.drawRoundRect(cx - bodyW / 2, baseY - bodyH / 2, bodyW, bodyH, 12, mainColor);
+
+    // Cheek blush (idle / speaking)
+    if (state !== "error") {
+      GFX.fillCircle(cx - 11, baseY + 4, 2, "rgba(0, 240, 255, 0.25)");
+      GFX.fillCircle(cx + 11, baseY + 4, 2, "rgba(0, 240, 255, 0.25)");
+    }
+
+    // Eyes
+    const eyeY = baseY - 2;
+    const isBlink = (state === "idle") && (Math.sin(t * 2) > 0.93);
+
+    if (state === "error") {
+      // Sad angled eyes
+      GFX.drawLine(cx - 10, eyeY - 2, cx - 5, eyeY, mainColor);
+      GFX.drawLine(cx + 10, eyeY - 2, cx + 5, eyeY, mainColor);
+      // Tear
+      GFX.fillCircle(cx + 10, eyeY + 4 + ((t * 20) % 6), 1, PALETTE.cyan);
+    } else if (isBlink) {
+      GFX.drawLine(cx - 10, eyeY, cx - 6, eyeY, mainColor);
+      GFX.drawLine(cx + 6, eyeY, cx + 10, eyeY, mainColor);
+    } else if (state === "thinking") {
+      // Swirling / rolling eye motion
+      const ox = Math.cos(t * 8) * 2;
+      const oy = Math.sin(t * 8) * 2;
+      GFX.fillCircle(cx - 8 + ox, eyeY + oy, 3, mainColor);
+      GFX.fillCircle(cx + 8 + ox, eyeY + oy, 3, mainColor);
+    } else if (state === "listening") {
+      // Huge round attentive eyes
+      GFX.fillCircle(cx - 8, eyeY, 4, mainColor);
+      GFX.fillCircle(cx + 8, eyeY, 4, mainColor);
+      // Specular highlight
+      GFX.drawPixel(cx - 9, eyeY - 1, "#FFFFFF");
+      GFX.drawPixel(cx + 7, eyeY - 1, "#FFFFFF");
+    } else {
+      // Normal dot eyes
+      GFX.fillCircle(cx - 8, eyeY, 2.5, mainColor);
+      GFX.fillCircle(cx + 8, eyeY, 2.5, mainColor);
+    }
+
+    // Mouth
+    const mY = baseY + 5;
+    if (state === "speaking") {
+      const open = 2 + Math.abs(Math.sin(t * 14)) * 3;
+      GFX.fillCircle(cx, mY, open, mainColor);
+    } else if (state === "listening") {
+      GFX.drawCircle(cx, mY, 2, mainColor);
+    } else if (state === "error") {
+      GFX.drawLine(cx - 4, mY + 2, cx + 4, mY + 2, mainColor);
+    } else {
+      GFX.drawLine(cx - 3, mY, cx + 3, mY, mainColor);
+    }
+  },
+
+  /**
+   * 3. MATRIX: 8-Bit Pixel Grid (Direct uint8_t[] portability)
+   */
+  matrix(cx, cy, state, t) {
+    const gridX = cx - 18;
+    const gridY = cy - 18;
+    const pixelSize = 3;
+    const step = 4;
+
+    // 9x9 Bitmaps for simple porting to Arduino PROGMEM arrays
+    const faces = {
+      idle: [
+        "000000000",
+        "011000110",
+        "011000110",
+        "000000000",
+        "000000000",
+        "100000001",
+        "010000010",
+        "001111100",
+        "000000000"
+      ],
+      blink: [
+        "000000000",
+        "000000000",
+        "011000110",
+        "000000000",
+        "000000000",
+        "100000001",
+        "010000010",
+        "001111100",
+        "000000000"
+      ],
+      listen: [
+        "000111000",
+        "011000110",
+        "111101111",
+        "110101011",
+        "000000000",
+        "001111100",
+        "010000010",
+        "001111100",
+        "000000000"
+      ],
+      think: [
+        "000111000",
+        "001000100",
+        "000001000",
+        "000010000",
+        "000100000",
+        "000100000",
+        "000000000",
+        "000110000",
+        "000110000"
+      ],
+      speakA: [
+        "000000000",
+        "011000110",
+        "011000110",
+        "000000000",
+        "001111100",
+        "010000010",
+        "010000010",
+        "001111100",
+        "000000000"
+      ],
+      speakB: [
+        "000000000",
+        "011000110",
+        "011000110",
+        "000000000",
+        "000000000",
+        "011111110",
+        "000000000",
+        "000000000",
+        "000000000"
+      ],
+      error: [
+        "100000001",
+        "010000010",
+        "001000100",
+        "000101000",
+        "000010000",
+        "000101000",
+        "001000100",
+        "010000010",
+        "100000001"
+      ]
+    };
+
+    let glyph = faces.idle;
+    const isBlink = Math.sin(t * 2) > 0.92;
+
+    if (state === "error") glyph = faces.error;
+    else if (state === "thinking") glyph = faces.think;
+    else if (state === "listening") glyph = faces.listen;
+    else if (state === "speaking") glyph = (Math.sin(t * 14) > 0) ? faces.speakA : faces.speakB;
+    else if (isBlink) glyph = faces.blink;
+
+    const color = state === "error" ? PALETTE.red
+                : state === "listening" ? PALETTE.green
+                : state === "thinking" ? PALETTE.amber : PALETTE.cyan;
+
+    // Draw virtual LED matrix
+    for (let r = 0; r < 9; r++) {
+      for (let c = 0; c < 9; c++) {
+        const px = gridX + c * step;
+        const py = gridY + r * step;
+        if (glyph[r][c] === "1") {
+          GFX.fillRect(px, py, pixelSize, pixelSize, color);
+        } else {
+          GFX.fillRect(px, py, pixelSize, pixelSize, "#0D131C");
+        }
+      }
+    }
+  }
+};
+
+/**
+ * -------------------------------------------------------------------------
+ * UI Components (Header, Mini VU Meter, Transcript Box, Footer)
+ * -------------------------------------------------------------------------
+ */
+function drawHeader(state) {
+  // Top header bar (16px)
+  GFX.fillRect(0, 0, 240, 16, "#090D14");
+  GFX.drawLine(0, 16, 240, 16, PALETTE.panelBorder);
+
+  // Status indicator LED
+  const dotColor = state === "listening" ? PALETTE.green
+                 : state === "thinking" ? PALETTE.amber
+                 : state === "error" ? PALETTE.red : PALETTE.cyan;
+  GFX.fillCircle(8, 8, 2.5, dotColor);
+
+  // App Title
+  GFX.drawText("VOICE AI", 16, 4, PALETTE.cyan, "bold 8px monospace");
+
+  // State pill text
+  const stateLabels = {
+    idle: "STANDBY",
+    listening: "REC...",
+    thinking: "PROC...",
+    speaking: "SPEAK",
+    error: "ERR"
+  };
+  const label = stateLabels[state] || "IDLE";
+  GFX.drawText(label, 194, 4, dotColor, "bold 8px monospace");
+}
+
+function drawAvatarPanel(state, style, t) {
+  // Container Box (64x64 at x:4, y:20)
+  GFX.fillRoundRect(4, 20, 64, 68, 3, PALETTE.panelBg);
+  GFX.drawRoundRect(4, 20, 64, 68, 3, PALETTE.panelBorder);
+
+  // Render selected avatar centered at (36, 52)
+  Avatars[style](36, 52, state, t);
+
+  // Mini VU meter box below avatar (x:4, y:92, w:64, h:24)
+  GFX.fillRoundRect(4, 92, 64, 24, 3, PALETTE.panelBg);
+  GFX.drawRoundRect(4, 92, 64, 24, 3, PALETTE.panelBorder);
+
+  // 7 dynamic level bars
+  const numBars = 7;
+  const barW = 4;
+  const gap = 4;
+  const startX = 8;
+  const baseY = 111;
+
+  for (let i = 0; i < numBars; i++) {
+    let barH = 2;
+    if (state === "listening") {
+      barH = 3 + Math.abs(Math.sin(t * 8 + i * 1.3)) * 13;
+    } else if (state === "speaking") {
+      barH = 2 + Math.abs(Math.cos(t * 10 + i * 0.9)) * 10;
+    } else if (state === "thinking") {
+      barH = 2 + Math.abs(Math.sin(t * 4 + i)) * 4;
+    } else if (state === "error") {
+      barH = 2;
+    }
+    const color = state === "listening" ? PALETTE.green
+                : state === "speaking" ? PALETTE.cyan
+                : state === "error" ? PALETTE.red : PALETTE.grayText;
+
+    GFX.fillRect(startX + i * (barW + gap), baseY - barH, barW, barH, color);
+  }
+}
+
+function wrapText(text, maxCharsPerLine = 24) {
+  const words = text.split(" ");
+  const lines = [];
+  let current = "";
+
+  words.forEach(word => {
+    if ((current + word).length > maxCharsPerLine) {
+      lines.push(current.trim());
+      current = word + " ";
+    } else {
+      current += word + " ";
+    }
+  });
+  if (current.trim().length > 0) lines.push(current.trim());
+  return lines;
+}
+
+function drawTranscriptBox(state, t) {
+  // Transcript Box (x:72, y:20, w:164, h:96)
+  GFX.fillRoundRect(72, 20, 164, 96, 3, PALETTE.panelBg);
+  GFX.drawRoundRect(72, 20, 164, 96, 3, PALETTE.panelBorder);
+
+  let currentY = 25;
+  const textX = 77;
+  const lineHeight = 10;
+
+  if (state === "idle") {
+    GFX.drawText("READY", textX, currentY, PALETTE.grayText, "bold 8px monospace");
+    currentY += lineHeight + 3;
+
+    GFX.drawText("Hold [SPACE] to talk.", textX, currentY, PALETTE.white, "8px monospace");
+    currentY += lineHeight;
+    GFX.drawText("Press [M] to swap face.", textX, currentY, PALETTE.grayText, "8px monospace");
+    currentY += lineHeight + 4;
+
+    GFX.drawLine(textX, currentY, textX + 152, currentY, PALETTE.panelBorder);
+    currentY += 4;
+    GFX.drawText("Last reply cached.", textX, currentY, PALETTE.cyanDark, "8px monospace");
+
+  } else if (state === "listening") {
+    GFX.drawText("YOU (LISTENING):", textX, currentY, PALETTE.green, "bold 8px monospace");
+    currentY += lineHeight + 2;
+
+    GFX.drawText('"What is the weather', textX, currentY, PALETTE.white, "8px monospace");
+    currentY += lineHeight;
+    GFX.drawText(' today in Tokyo?"', textX, currentY, PALETTE.white, "8px monospace");
+    currentY += lineHeight + 4;
+
+    // Animated dots
+    const dots = ".".repeat(1 + Math.floor((t * 4) % 3));
+    GFX.drawText(`Sampling 16kHz${dots}`, textX, currentY, PALETTE.grayText, "8px monospace");
+
+  } else if (state === "thinking") {
+    GFX.drawText("PROCESSING...", textX, currentY, PALETTE.amber, "bold 8px monospace");
+    currentY += lineHeight + 2;
+
+    GFX.drawText('"What is the weather', textX, currentY, PALETTE.grayText, "8px monospace");
+    currentY += lineHeight;
+    GFX.drawText(' today in Tokyo?"', textX, currentY, PALETTE.grayText, "8px monospace");
+    currentY += lineHeight + 4;
+
+    const spinner = ["|", "/", "-", "\\"][Math.floor((t * 8) % 4)];
+    GFX.drawText(`Querying server [${spinner}]`, textX, currentY, PALETTE.amber, "8px monospace");
+
+  } else if (state === "speaking") {
+    GFX.drawText("YOU:", textX, currentY, PALETTE.grayText, "bold 8px monospace");
+    GFX.drawText('"Weather in Tokyo?"', textX + 26, currentY, PALETTE.grayText, "8px monospace");
+    currentY += lineHeight + 2;
+
+    GFX.drawText("AI:", textX, currentY, PALETTE.cyan, "bold 8px monospace");
+    currentY += lineHeight;
+
+    const replyLines = wrapText("Partly cloudy, 21°C with 60% humidity in Tokyo. Light breeze.", 23);
+    replyLines.forEach(line => {
+      GFX.drawText(line, textX, currentY, PALETTE.white, "8px monospace");
+      currentY += lineHeight;
+    });
+
+  } else if (state === "error") {
+    GFX.drawText("NETWORK ERROR", textX, currentY, PALETTE.red, "bold 8px monospace");
+    currentY += lineHeight + 3;
+
+    GFX.drawText("Code 504: Timeout", textX, currentY, PALETTE.white, "8px monospace");
+    currentY += lineHeight;
+    GFX.drawText("LLM endpoint unreach-", textX, currentY, PALETTE.grayText, "8px monospace");
+    currentY += lineHeight;
+    GFX.drawText("able. Check WiFi AP.", textX, currentY, PALETTE.grayText, "8px monospace");
+    currentY += lineHeight + 4;
+    GFX.drawText("Press [Q] to retry.", textX, currentY, PALETTE.red, "8px monospace");
+  }
+}
+
+function drawFooter(state) {
+  // Footer band (15px: y=120..135)
+  GFX.drawLine(0, 120, 240, 120, PALETTE.panelBorder);
+  GFX.fillRect(0, 121, 240, 14, "#06080C");
+
+  // Key hints
+  GFX.drawText("[SPC] Talk", 6, 124, PALETTE.grayText, "8px monospace");
+  GFX.drawText("[M] Face", 74, 124, PALETTE.grayText, "8px monospace");
+  GFX.drawText("[Q] Back", 136, 124, PALETTE.grayText, "8px monospace");
+
+  // Battery status right
+  GFX.drawText("4.1V", 212, 124, PALETTE.green, "8px monospace");
+}
+
+/**
+ * -------------------------------------------------------------------------
+ * Main Render Loop
+ * -------------------------------------------------------------------------
+ */
+function render() {
+  AppState.time = performance.now() * 0.001;
+
+  // Clear background
+  GFX.fillRect(0, 0, 240, 135, PALETTE.bg);
+
+  // Draw layers
+  drawHeader(AppState.state);
+  drawAvatarPanel(AppState.state, AppState.avatarStyle, AppState.time);
+  drawTranscriptBox(AppState.state, AppState.time);
+  drawFooter(AppState.state);
+
+  requestAnimationFrame(render);
+}
+
+// Start rendering
+requestAnimationFrame(render);
+
+/**
+ * -------------------------------------------------------------------------
+ * Interaction & Keybindings
+ * -------------------------------------------------------------------------
+ */
+function setState(newState) {
+  AppState.state = newState;
+  document.querySelectorAll(".control-group:first-child button").forEach((btn, idx) => {
+    const states = ["idle", "listening", "thinking", "speaking", "error"];
+    btn.classList.toggle("active", states[idx] === newState);
+  });
+}
+
+function setStyle(newStyle) {
+  AppState.avatarStyle = newStyle;
+  document.querySelectorAll(".control-group:nth-child(2) button").forEach((btn, idx) => {
+    const styles = ["robot", "blob", "matrix"];
+    btn.classList.toggle("active", styles[idx] === newStyle);
+  });
+}
+
+window.addEventListener("keydown", (e) => {
+  if (e.repeat) return;
+  if (e.code === "Space") {
+    e.preventDefault();
+    setState(AppState.state === "listening" ? "thinking" : "listening");
+  } else if (e.key === "1") setState("idle");
+  else if (e.key === "2") setState("listening");
+  else if (e.key === "3") setState("thinking");
+  else if (e.key === "4") setState("speaking");
+  else if (e.key === "5") setState("error");
+  else if (e.key.toLowerCase() === "m") {
+    const styles = ["robot", "blob", "matrix"];
+    const nextIdx = (styles.indexOf(AppState.avatarStyle) + 1) % styles.length;
+    setStyle(styles[nextIdx]);
+  } else if (e.key.toLowerCase() === "q") {
+    setState("idle");
+  }
+});
+</script>
+
+</body>
+</html>

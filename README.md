@@ -52,12 +52,18 @@ already running with `--host 0.0.0.0` (or at least reachable from the Cardputer'
 ```bash
 cd server
 python -m venv .venv && source .venv/bin/activate
-pip install -e .
+pip install -e .                     # base deps only — enough for mock mode
+# pip install -e ".[voice]"          # uncomment for real whisper/piper backends
 cp config.yaml.example config.yaml   # edit: whisper model, llamacpp url, piper voice
 # Download a Piper voice, e.g.:
 #   https://github.com/rhasspy/piper/releases  -> en_US-lessac-medium.onnx (+ .json)
 uvicorn app.main:app --host 0.0.0.0 --port 8000
 ```
+
+**Mock mode:** set `mock: true` in `config.yaml` to run with canned responses —
+no whisper, llama.cpp, or piper needed. `/voice` returns a fixed transcript,
+echoes it as the reply, and `/audio/<id>.wav` is a short beep. Handy for
+testing the Cardputer end-to-end before installing any models.
 
 Check it: `curl http://<pc-ip>:8000/status`
 

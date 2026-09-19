@@ -20,7 +20,7 @@ from fastapi import Request
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi import FastAPI
 
-from . import llm, stats, stt, tts
+from . import stats
 
 BASE = Path(__file__).resolve().parent.parent
 CFG_PATH = BASE / "config.yaml"
@@ -33,6 +33,14 @@ if not CFG_PATH.exists():
     )
 cfg = yaml.safe_load(CFG_PATH.read_text())
 AUDIO_DIR.mkdir(exist_ok=True)
+
+# Mock mode runs the pipeline with canned responses and no heavy deps;
+# see app/mock.py. Only the voice path is swapped — /status telemetry stays real.
+if cfg.get("mock"):
+    from . import mock
+    stt = tts = llm = mock
+else:
+    from . import llm, stt, tts
 
 app = FastAPI(title="cardputer-voice-server")
 
